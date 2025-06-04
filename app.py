@@ -182,7 +182,7 @@ app = Flask(__name__) # create Flask app instance
 # set channel acess token 
 CHANNEL_ACCESS_TOKEN= os.getenv("CHANNEL_ACCESS_TOKEN")
 configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN) 
-line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET')) # set channel secret 
+handler = WebhookHandler(os.getenv('CHANNEL_SECRET')) # set channel secret 
 
 
 @app.route("/callback", methods=['POST'])
@@ -196,7 +196,7 @@ def callback():
 
     # handle webhook body
     try:
-        line_handler.handle(body, signature)
+        handler.handle(body, signature)
     except InvalidSignatureError:
         app.logger.info("Invalid signature. Please check your channel access token/channel secret.")
         abort(400)
@@ -204,13 +204,16 @@ def callback():
     return 'OK'
 
 # 訊息事件處理函式
-@line_handler.add(MessageEvent, message=TextMessageContent) # handle text message event
+@handler.add(MessageEvent, message=TextMessageContent) # handle text message event
 def handle_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client) # create an instance of MessagingApi
 
         user_id = event.source.user_id
         user_message = event.message.text
+
+        # 將全形冒號轉為半形冒號
+        user_message = user_message.replace('：', ':')
 
         # 初始化用戶聊天歷史
         if user_id not in chat_history:
@@ -426,7 +429,7 @@ def handle_message(event):
             )
 
 # sticker message event handler
-@line_handler.add(MessageEvent, message=StickerMessageContent)
+@handler.add(MessageEvent, message=StickerMessageContent)
 def handle_sticker_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
